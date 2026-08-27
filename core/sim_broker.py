@@ -14,6 +14,7 @@ pessimistic rather than a full L2 matching engine.
 from __future__ import annotations
 
 import threading
+from typing import Any
 
 from .broker import Broker
 from .models import (
@@ -201,3 +202,77 @@ class SimBroker(Broker):
                 for s, p in self._positions.items()
             )
             return self.cash + mtm
+
+    def mark_price(self, symbol: str) -> float | None:
+        return self._last_px.get(symbol)
+
+    # --- persistence ----------------------------------------------------
+    # A JSON-serializable snapshot so the gateway can rebuild the exact broker
+    # after a restart. Append-only fill history lives inside it.
+    def export_state(self) -> dict[str, Any]:
+        with self._lock:
+            return {
+                "cash": self.cash,
+                "starting_cash": self.starting_cash,
+                "last_px": dict(self._last_px),
+                "positions": [vars(p) for p in self._positions.values()],
+                "orders": [_order_dict(o) for o in self._orders.values()],
+                "fills": [_fill_dict(f) for f in self._fills],
+            }
+
+    @classmethod
+    def from_state(cls, state: dict[str, Any], **cfg: Any) -> SimBroker:
+        b = cls(cash=state.get("starting_cash", state.get("cash", 0)), **cfg)
+        b.cash = state["cash"]
+        b._last_px = {k: float(v) for k, v in state.get("last_px", {}).items()}
+        for pd in state.get("positions", []):
+            b._positions[pd["symbol"]] = Position(**pd)
+        for fd in state.get("fills", []):
+            b._fills.append(_fill_from_dict(fd))
+        for od in state.get("orders", []):
+            o = _order_from_dict(od)
+            b._orders[o.broker_order_id] = o
+            b._by_client[o.client_order_id] = o.broker_order_id
+            if o.type is OrderType.LIMIT and o.status in (
+                OrderStatus.PENDING,
+                OrderStatus.PARTIAL,
+            ):
+                b._resting.append(o.broker_order_id)
+        return b
+
+
+def _order_dict(o: Order) -> dict[str, Any]:
+    d = vars(o).copy()
+    d["side"] = o.side.value
+    d["type"] = o.type.value
+    d["status"] = o.status.value
+    return d
+
+
+def _order_from_dict(d: dict[str, Any]) -> Order:
+    d = d.copy()
+    d["side"] = Side(d["side"])
+    d["type"] = OrderType(d["type"])
+    status = OrderStatus(d.pop("status"))
+    filled = d.pop("filled_qty", 0)
+    avg = d.pop("avg_fill_price", None)
+    updated = d.pop("updated_ms", None)
+    reject = d.pop("reject_reason", None)
+    o = Order(**d)
+    o.status, o.filled_qty, o.avg_fill_price = status, filled, avg
+    if updated is not None:
+        o.updated_ms = updated
+    o.reject_reason = reject
+    return o
+
+
+def _fill_dict(f: Fill) -> dict[str, Any]:
+    d = vars(f).copy()
+    d["side"] = f.side.value
+    return d
+
+
+def _fill_from_dict(d: dict[str, Any]) -> Fill:
+    d = d.copy()
+    d["side"] = Side(d["side"])
+    return Fill(**d)

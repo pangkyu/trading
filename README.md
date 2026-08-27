@@ -34,7 +34,7 @@ NH투자증권 **PLUG Open API**([PLUG-OpenAPI](https://github.com/PLUG-OpenAPI)
 
 - [x] **M1 — core** : 모델 + `Broker`/`QuoteFeed` 추상 + `SimBroker` + `SyntheticFeed` + 전략 인터페이스 + 데모/테스트 *(NH 계정 불필요)*
 - [x] **M2 — NH 연동** : `.venv`(Python 3.12, uv), `core.nh`(매핑·계좌), `NHFeed`(WebSocket→QuoteFeed), `NHBroker`/`NHMockBroker`/`LiveBroker`, 매매기록 조회(`fills`/`reconcile`)
-- [ ] **M3 — gateway** : FastAPI REST + WebSocket, SQLite(유저/주문/체결/PnL), 시세 팬아웃
+- [x] **M3 — gateway** : FastAPI REST + WS 시세 팬아웃, SQLite 영속(SimBroker 상태 blob + NH 히스토리 캐시), 재시작 복원, NH 라우트(dry-run 기본)
 - [ ] **M4 — web** : Node + React 모의투자 화면 (gateway 호출만)
 - [ ] **M5 — bot** : 전략 루프 + 리스크 게이트 + kill switch + 프로세스 매니저(무인)
 
@@ -59,6 +59,27 @@ cp .env.example .env && $EDITOR .env     # NH 자격증명 입력 (또는 ~/.nhp
 .venv/bin/python -m scripts.nh_smoke --ticks 20   # + 실시간 시세 20틱 (장중)
 ```
 
+### gateway (M3)
+
+```bash
+.venv/bin/python -m scripts.run_gateway           # http://127.0.0.1:8000, 합성 시세
+#   http://127.0.0.1:8000/docs 에서 전체 API
+
+# NH 시세 + 봇 계좌까지:
+GATEWAY_FEED=nh GATEWAY_NH_ACCOUNT=50001001987 .venv/bin/python -m scripts.run_gateway
+```
+
+| 그룹 | 엔드포인트 |
+|---|---|
+| 시세 | `GET /quotes`, `GET /quotes/{sym}`, `WS /ws/quotes?symbols=` |
+| 모의계좌 | `POST /sim/accounts`, `GET /sim/accounts[/{id}]`, `DELETE …` |
+| 주문 | `POST /sim/accounts/{id}/orders`, `…/orders?open_only=`, `…/orders/{oid}/cancel` |
+| 매매기록 | `GET /sim/accounts/{id}/fills?since_ms=` |
+| NH(봇) | `GET /nh/status`, `/nh/positions`, `/nh/fills?start=&end=`(캐시), `POST /nh/orders` |
+
+SimBroker 상태는 매 주문마다 SQLite(`GATEWAY_DB`)에 저장돼 재시작 시 복원된다.
+NH 매매기록은 날짜별로 캐시(`GATEWAY_NH_HISTORY_TTL`)해 쿼터(IGW42903)를 아낀다.
+
 ## 디렉토리
 
 ```
@@ -71,7 +92,13 @@ core/         공통 코어
   nh.py         NH env·계좌 판별 + wire↔model 매핑        ── nhplug 필요
   nh_feed.py    NHFeed: nhplug.realtime.subscribe → QuoteFeed
   nh_broker.py  NHBroker / NHMockBroker / LiveBroker
-scripts/      demo · nh_smoke
+gateway/      FastAPI 서비스 (M3)
+  config.py     GATEWAY_* 환경변수
+  db.py         SQLite: sim_account 상태 blob + nh_history 캐시
+  hub.py        피드 1개 소유 → SimBroker·WS 팬아웃, 계좌 레지스트리
+  app.py        REST + WebSocket 라우트
+  serialize.py  model → JSON
+scripts/      demo · nh_smoke · run_gateway
 tests/        pytest
 CLAUDE.md     NH SDK 개발 규칙 (PLUG-OpenAPI 공식 템플릿)
 ```

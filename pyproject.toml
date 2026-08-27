@@ -12,11 +12,11 @@ dependencies = [
 nh = [
     "nhplug[instruments]>=0.3",
 ]
-# milestone 3: gateway
+# milestone 3: gateway (persistence is stdlib sqlite3)
 gateway = [
     "fastapi>=0.110",
     "uvicorn[standard]>=0.27",
-    "sqlalchemy>=2.0",
+    "httpx>=0.27",           # TestClient
 ]
 dev = [
     "pytest>=8.0",
@@ -28,7 +28,7 @@ requires = ["setuptools>=68"]
 build-backend = "setuptools.build_meta"
 
 [tool.setuptools]
-packages = ["core"]
+packages = ["core", "gateway"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

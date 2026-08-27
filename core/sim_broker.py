@@ -14,7 +14,6 @@ pessimistic rather than a full L2 matching engine.
 from __future__ import annotations
 
 import threading
-from typing import Dict, List, Optional
 
 from .broker import Broker
 from .models import (
@@ -45,12 +44,12 @@ class SimBroker(Broker):
         self.slippage_bps = slippage_bps
         self.allow_short = allow_short
 
-        self._orders: Dict[str, Order] = {}            # broker_order_id -> Order
-        self._by_client: Dict[str, str] = {}           # client_order_id -> broker_order_id
-        self._resting: List[str] = []                  # broker_order_ids of open LIMITs
-        self._positions: Dict[str, Position] = {}
-        self._fills: List[Fill] = []
-        self._last_px: Dict[str, float] = {}
+        self._orders: dict[str, Order] = {}            # broker_order_id -> Order
+        self._by_client: dict[str, str] = {}           # client_order_id -> broker_order_id
+        self._resting: list[str] = []                  # broker_order_ids of open LIMITs
+        self._positions: dict[str, Position] = {}
+        self._fills: list[Fill] = []
+        self._last_px: dict[str, float] = {}
 
     # --- Broker API -----------------------------------------------------------
     def submit(self, order: Order) -> Order:
@@ -91,10 +90,10 @@ class SimBroker(Broker):
                     self._resting.remove(broker_order_id)
             return order
 
-    def get_order(self, broker_order_id: str) -> Optional[Order]:
+    def get_order(self, broker_order_id: str) -> Order | None:
         return self._orders.get(broker_order_id)
 
-    def open_orders(self) -> List[Order]:
+    def open_orders(self) -> list[Order]:
         with self._lock:
             return [
                 self._orders[oid]
@@ -102,11 +101,11 @@ class SimBroker(Broker):
                 if self._orders[oid].status in (OrderStatus.PENDING, OrderStatus.PARTIAL)
             ]
 
-    def positions(self) -> Dict[str, Position]:
+    def positions(self) -> dict[str, Position]:
         with self._lock:
             return {s: Position(**vars(p)) for s, p in self._positions.items()}
 
-    def fills(self, since_ms: int = 0) -> List[Fill]:
+    def fills(self, since_ms: int = 0) -> list[Fill]:
         with self._lock:
             return [f for f in self._fills if f.ts_ms >= since_ms]
 
@@ -130,7 +129,7 @@ class SimBroker(Broker):
                         self._resting.remove(oid)
 
     # --- internals --------------------------------------------------------
-    def _risk_check(self, order: Order) -> Optional[str]:
+    def _risk_check(self, order: Order) -> str | None:
         if not self.allow_short and order.side is Side.SELL:
             held = self._positions.get(order.symbol)
             have = held.qty if held else 0
@@ -144,7 +143,7 @@ class SimBroker(Broker):
                 return "insufficient position for SELL (short not allowed)"
         return None
 
-    def _market_price(self, order: Order) -> Optional[float]:
+    def _market_price(self, order: Order) -> float | None:
         # prefer the opposite touch, fall back to last +/- slippage
         # (a real feed for KR stocks always carries a book, so this is the dev path)
         last = self._last_px.get(order.symbol)
@@ -154,7 +153,7 @@ class SimBroker(Broker):
         return last + slip if order.side is Side.BUY else last - slip
 
     @staticmethod
-    def _limit_cross(order: Order, quote) -> Optional[float]:
+    def _limit_cross(order: Order, quote) -> float | None:
         lp = order.limit_price
         if order.side is Side.BUY:
             ask = quote.ask if quote.ask is not None else quote.last

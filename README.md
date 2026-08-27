@@ -25,43 +25,60 @@ NH투자증권 **PLUG Open API**([PLUG-OpenAPI](https://github.com/PLUG-OpenAPI)
 | 구현 | 대상 | 용도 |
 |---|---|---|
 | `SimBroker` | 자체 체결엔진 (시세만 NH) | 웹 모의투자, 전략 1차 검증 |
-| `NHMockBroker` *(M2)* | `moapi.nhplug.com`, `acct_type=03` | 봇 무인 검증 |
-| `LiveBroker` *(M2)* | `api.nhplug.com`, `acct_type=01` | 실거래 |
+| `NHMockBroker` | `moapi.nhplug.com`, `acct_type=03` | 봇 무인 검증 |
+| `LiveBroker` | `api.nhplug.com`, `acct_type=01` | 실거래 |
 
-봇도 웹도 이 인터페이스만 의존하므로 승급은 **설정 한 줄**.
+봇도 웹도 이 인터페이스만 의존하므로 승급은 **`.env` 의 `NHPLUG_BASE_URL` 한 줄**.
 
 ## 로드맵
 
 - [x] **M1 — core** : 모델 + `Broker`/`QuoteFeed` 추상 + `SimBroker` + `SyntheticFeed` + 전략 인터페이스 + 데모/테스트 *(NH 계정 불필요)*
-- [ ] **M2 — NH 연동** : Python 3.12 환경, `nh_client.py`(`nhplug` 래핑), `NHFeed`, `NHMockBroker`, `LiveBroker`
+- [x] **M2 — NH 연동** : `.venv`(Python 3.12, uv), `core.nh`(매핑·계좌), `NHFeed`(WebSocket→QuoteFeed), `NHBroker`/`NHMockBroker`/`LiveBroker`, 매매기록 조회(`fills`/`reconcile`)
 - [ ] **M3 — gateway** : FastAPI REST + WebSocket, SQLite(유저/주문/체결/PnL), 시세 팬아웃
 - [ ] **M4 — web** : Node + React 모의투자 화면 (gateway 호출만)
 - [ ] **M5 — bot** : 전략 루프 + 리스크 게이트 + kill switch + 프로세스 매니저(무인)
 
-## 지금 실행해보기 (M1)
+## 개발 환경
 
 ```bash
-python3 -m scripts.demo      # SyntheticFeed → SMACross → SimBroker → 체결/PnL
-python3 -m pytest -q         # core 정확성 테스트 (pip install --user pytest)
+brew install uv
+uv venv --python 3.12 .venv
+uv pip install "nhplug[instruments]" pytest
 ```
 
-`core/`는 표준 라이브러리만 사용한다. NH 연동(`nhplug`)은 M2부터, Python **3.11+** 필요.
+`core/` 자체는 표준 라이브러리만 쓰지만, NH 연동 모듈(`core.nh*`)과 테스트는 `.venv`(3.11+) 필요.
+
+## 실행
+
+```bash
+.venv/bin/python -m scripts.demo         # 오프라인: SyntheticFeed → SMACross → SimBroker
+.venv/bin/python -m pytest -q            # 전체 테스트 (NH 매핑은 network 없이 검증)
+
+cp .env.example .env && $EDITOR .env     # NH 자격증명 입력 (또는 ~/.nhplug/.env)
+.venv/bin/python -m scripts.nh_smoke              # 접속 확인: env·계좌·현재가
+.venv/bin/python -m scripts.nh_smoke --ticks 20   # + 실시간 시세 20틱 (장중)
+```
 
 ## 디렉토리
 
 ```
-core/         공통 코어 (의존성 없음)
-  models.py     Quote / Order / Fill / Position
+core/         공통 코어
+  models.py     Quote / Order / Fill / Position (표준 라이브러리만)
   broker.py     Broker · QuoteFeed 추상
   sim_broker.py 자체 체결엔진
   feed.py       SyntheticFeed / ReplayFeed
   strategy.py   Strategy 추상 + SMACross 예제
-scripts/      실행 스크립트 (demo)
+  nh.py         NH env·계좌 판별 + wire↔model 매핑        ── nhplug 필요
+  nh_feed.py    NHFeed: nhplug.realtime.subscribe → QuoteFeed
+  nh_broker.py  NHBroker / NHMockBroker / LiveBroker
+scripts/      demo · nh_smoke
 tests/        pytest
+CLAUDE.md     NH SDK 개발 규칙 (PLUG-OpenAPI 공식 템플릿)
 ```
 
 ## 보안
 
 - 앱키/시크릿은 `~/.nhplug/.env` (레포 밖). 브라우저로 절대 내려보내지 않음 — gateway가 프록시.
-- NH 실거래 전 반드시 모의투자(`moapi`)에서 검증. `dry_run` 기본 유지.
-- NH WebSocket은 앱키당 세션 2개 제한 → gateway가 1개만 잡고 팬아웃.
+- `NHBroker` 는 `dry_run=True` 기본. 실전송은 명시적으로 꺼야 함. 실거래 전 반드시 `moapi` 검증.
+- `LiveBroker`/`NHMockBroker` 는 `NHPLUG_BASE_URL` 환경이 기대와 다르면 **생성 시 예외** (엉뚱한 환경 주문 방지).
+- NH WebSocket은 앱키당 세션 2개 제한 → gateway가 1개만 잡고 팬아웃 (M3).

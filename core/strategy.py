@@ -9,15 +9,13 @@ from __future__ import annotations
 
 import abc
 from collections import defaultdict, deque
-from typing import Deque, Dict, List
 
-from .models import Order, OrderType, Side
-from .models import Quote
+from .models import Order, OrderType, Quote, Side
 
 
 class Strategy(abc.ABC):
     @abc.abstractmethod
-    def on_quote(self, quote: Quote, positions: Dict[str, int]) -> List[Order]:
+    def on_quote(self, quote: Quote, positions: dict[str, int]) -> list[Order]:
         """Return orders to submit in response to this tick (possibly empty).
 
         ``positions`` maps symbol -> signed quantity currently held. The strategy
@@ -32,10 +30,10 @@ class SMACross(Strategy):
     def __init__(self, fast: int = 10, slow: int = 30, lot: int = 10) -> None:
         assert fast < slow
         self.fast, self.slow, self.lot = fast, slow, lot
-        self._px: Dict[str, Deque[float]] = defaultdict(lambda: deque(maxlen=slow))
-        self._last_signal: Dict[str, int] = defaultdict(int)  # -1 / 0 / +1
+        self._px: dict[str, deque[float]] = defaultdict(lambda: deque(maxlen=slow))
+        self._last_signal: dict[str, int] = defaultdict(int)  # -1 / 0 / +1
 
-    def on_quote(self, quote: Quote, positions: Dict[str, int]) -> List[Order]:
+    def on_quote(self, quote: Quote, positions: dict[str, int]) -> list[Order]:
         price = quote.last or quote.mid
         if price is None:
             return []

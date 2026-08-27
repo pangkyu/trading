@@ -11,7 +11,6 @@ import time
 import uuid
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Optional
 
 
 def _now_ms() -> int:
@@ -50,14 +49,14 @@ class Quote:
 
     symbol: str
     ts_ms: int = field(default_factory=_now_ms)
-    last: Optional[float] = None
-    bid: Optional[float] = None
-    ask: Optional[float] = None
-    bid_size: Optional[int] = None
-    ask_size: Optional[int] = None
+    last: float | None = None
+    bid: float | None = None
+    ask: float | None = None
+    bid_size: int | None = None
+    ask_size: int | None = None
 
     @property
-    def mid(self) -> Optional[float]:
+    def mid(self) -> float | None:
         if self.bid is not None and self.ask is not None:
             return (self.bid + self.ask) / 2
         return self.last
@@ -69,18 +68,18 @@ class Order:
     side: Side
     qty: int
     type: OrderType = OrderType.MARKET
-    limit_price: Optional[float] = None
+    limit_price: float | None = None
     # client-supplied idempotency key; a broker must never fill two orders
     # with the same client_order_id.
     client_order_id: str = field(default_factory=lambda: new_id("cord"))
     # broker-assigned id, populated once accepted.
-    broker_order_id: Optional[str] = None
+    broker_order_id: str | None = None
     status: OrderStatus = OrderStatus.PENDING
     filled_qty: int = 0
-    avg_fill_price: Optional[float] = None
+    avg_fill_price: float | None = None
     created_ms: int = field(default_factory=_now_ms)
     updated_ms: int = field(default_factory=_now_ms)
-    reject_reason: Optional[str] = None
+    reject_reason: str | None = None
 
     @property
     def remaining_qty(self) -> int:

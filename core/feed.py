@@ -10,7 +10,7 @@ from __future__ import annotations
 import math
 import random
 import time
-from typing import Dict, Iterable, Iterator, List
+from collections.abc import Iterable, Iterator
 
 from .broker import QuoteFeed
 from .models import Quote
@@ -21,7 +21,7 @@ class SyntheticFeed(QuoteFeed):
 
     def __init__(
         self,
-        start_prices: Dict[str, float],
+        start_prices: dict[str, float],
         *,
         vol_bps: float = 8.0,       # per-tick stdev in basis points
         spread_bps: float = 4.0,
@@ -32,7 +32,7 @@ class SyntheticFeed(QuoteFeed):
         self._vol = vol_bps / 10_000
         self._spread = spread_bps / 10_000
         self._interval = interval_s
-        self._symbols: List[str] = list(start_prices)
+        self._symbols: list[str] = list(start_prices)
         self._rng = random.Random(seed)
         self._t = 0
 
@@ -65,11 +65,11 @@ class SyntheticFeed(QuoteFeed):
 class ReplayFeed(QuoteFeed):
     """Replays a list of pre-recorded quotes (for backtests / deterministic tests)."""
 
-    def __init__(self, quotes: List[Quote], *, speed: float = 0.0) -> None:
+    def __init__(self, quotes: list[Quote], *, speed: float = 0.0) -> None:
         self._quotes = quotes
         self._speed = speed
 
-    def subscribe(self, symbols: Iterable[str]) -> None:  # noqa: D401 - no-op
+    def subscribe(self, symbols: Iterable[str]) -> None:
         pass
 
     def stream(self) -> Iterator[Quote]:

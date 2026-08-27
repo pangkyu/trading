@@ -7,7 +7,7 @@ config change and nothing else.
 from __future__ import annotations
 
 import abc
-from typing import Callable, Dict, Iterable, List, Optional
+from collections.abc import Callable, Iterable
 
 from .models import Fill, Order, Position, Quote
 
@@ -28,19 +28,19 @@ class Broker(abc.ABC):
         ...
 
     @abc.abstractmethod
-    def get_order(self, broker_order_id: str) -> Optional[Order]:
+    def get_order(self, broker_order_id: str) -> Order | None:
         ...
 
     @abc.abstractmethod
-    def open_orders(self) -> List[Order]:
+    def open_orders(self) -> list[Order]:
         ...
 
     @abc.abstractmethod
-    def positions(self) -> Dict[str, Position]:
+    def positions(self) -> dict[str, Position]:
         ...
 
     @abc.abstractmethod
-    def fills(self, since_ms: int = 0) -> List[Fill]:
+    def fills(self, since_ms: int = 0) -> list[Fill]:
         """Trade history — the '매매 기록' view."""
 
     def on_fill(self, cb: FillCallback) -> None:
@@ -49,7 +49,7 @@ class Broker(abc.ABC):
 
     # --- helpers for subclasses -------------------------------------------------
     def __init__(self) -> None:
-        self._fill_listeners: List[FillCallback] = []
+        self._fill_listeners: list[FillCallback] = []
 
     def _emit_fill(self, fill: Fill) -> None:
         for cb in self._fill_listeners:
@@ -64,5 +64,5 @@ class QuoteFeed(abc.ABC):
         ...
 
     @abc.abstractmethod
-    def stream(self) -> "Iterable[Quote]":
+    def stream(self) -> Iterable[Quote]:
         """Yield quotes as they arrive. Blocking iterator."""

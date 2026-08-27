@@ -1,0 +1,38 @@
+[project]
+name = "trading"
+version = "0.1.0"
+description = "NH PLUG Open API automated trading bot + paper-trading web service, on a shared core"
+requires-python = ">=3.11"
+dependencies = [
+    # milestone 1 (core) has zero runtime deps beyond stdlib.
+]
+
+[project.optional-dependencies]
+# milestone 2+: real NH connectivity
+nh = [
+    "nhplug[instruments]>=0.3",
+]
+# milestone 3: gateway
+gateway = [
+    "fastapi>=0.110",
+    "uvicorn[standard]>=0.27",
+    "sqlalchemy>=2.0",
+]
+dev = [
+    "pytest>=8.0",
+    "ruff>=0.4",
+]
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+packages = ["core"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"

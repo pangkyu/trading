@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import logging
 import threading
+import time
 from datetime import date
 
 import nhplug
@@ -45,6 +46,7 @@ class NHBroker(Broker):
         market: str = "KRX",
         dry_run: bool = True,
         expect_env: str | None = None,   # "mock" | "live" | None
+        verify_account: bool = True,     # False + explicit act_no -> skip the /n2/acctinfo call
     ) -> None:
         super().__init__()
         env = current_env()
@@ -55,7 +57,12 @@ class NHBroker(Broker):
         self.env = env
         self.market = market
         self.dry_run = dry_run
-        self.act_no = resolve_account(act_no)
+        # NH mock keys carry a tight APP+API daily quota (IGW42903); skip the
+        # account lookup when the caller already knows the number.
+        if act_no and not verify_account:
+            self.act_no = act_no
+        else:
+            self.act_no = resolve_account(act_no)
         self._lock = threading.RLock()
         self._orders: dict[str, Order] = {}          # broker_order_id -> Order
         self._by_client: dict[str, str] = {}         # client_order_id -> broker_order_id
@@ -159,11 +166,21 @@ class NHBroker(Broker):
         return [f for f in self._fills_for(date.today()) if f.ts_ms >= since_ms]
 
     # --- NH-specific extras ------------------------------------------------
-    def fills_between(self, start: date, end: date) -> list[Fill]:
+    def fills_between(self, start: date, end: date, *, skip_weekends: bool = True,
+                      pause_s: float = 0.3) -> list[Fill]:
+        """Trade history over a date range — one dailyOrderExecution call per day.
+
+        NH enforces an APP+API transaction-count quota (IGW42903) well below the
+        per-second rate limit, so keep ranges tight and let the gateway (M3)
+        cache days that won't change. ``pause_s`` spaces the calls out.
+        """
         out: list[Fill] = []
         d = start
         while d <= end:
-            out.extend(self._fills_for(d))
+            if not (skip_weekends and d.weekday() >= 5):
+                out.extend(self._fills_for(d))
+                if d < end:
+                    time.sleep(pause_s)
             d = date.fromordinal(d.toordinal() + 1)
         return out
 

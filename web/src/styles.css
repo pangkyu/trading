@@ -1,0 +1,268 @@
+:root {
+  --bg: #0e1117;
+  --panel: #161b22;
+  --panel-2: #1c2230;
+  --border: #2a313c;
+  --text: #e6edf3;
+  --muted: #8b949e;
+  --up: #f0616d;
+  --down: #4c8dff;
+  --accent: #d29922;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font: 14px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", "Apple SD Gothic Neo",
+    "Malgun Gothic", sans-serif;
+}
+
+code {
+  background: var(--panel-2);
+  padding: 1px 5px;
+  border-radius: 4px;
+}
+
+.app {
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 0 16px 48px;
+}
+
+/* --- account bar --- */
+.accountbar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 0;
+  flex-wrap: wrap;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 16px;
+}
+.brand {
+  font-weight: 700;
+  font-size: 16px;
+  letter-spacing: -0.5px;
+}
+.spacer {
+  flex: 1;
+}
+.summary {
+  display: flex;
+  gap: 18px;
+  font-variant-numeric: tabular-nums;
+}
+.newacc {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
+/* --- layout --- */
+.layout {
+  display: grid;
+  grid-template-columns: 1fr 1.35fr;
+  gap: 16px;
+  align-items: start;
+}
+.col {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-width: 0;
+}
+@media (max-width: 900px) {
+  .layout {
+    grid-template-columns: 1fr;
+  }
+}
+
+.panel {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 14px 16px;
+}
+.panel h2 {
+  margin: 0 0 12px;
+  font-size: 14px;
+  color: var(--muted);
+  font-weight: 600;
+}
+
+/* --- tables --- */
+table.grid {
+  width: 100%;
+  border-collapse: collapse;
+  font-variant-numeric: tabular-nums;
+}
+.grid th {
+  text-align: left;
+  font-weight: 500;
+  color: var(--muted);
+  font-size: 12px;
+  padding: 6px 8px;
+  border-bottom: 1px solid var(--border);
+}
+.grid td {
+  padding: 8px;
+  border-bottom: 1px solid var(--panel-2);
+}
+.grid tr:last-child td {
+  border-bottom: none;
+}
+.grid .num {
+  text-align: right;
+}
+.grid tbody tr:hover {
+  background: var(--panel-2);
+}
+.grid tr.sel {
+  background: var(--panel-2);
+  box-shadow: inset 2px 0 0 var(--accent);
+}
+.grid tbody tr {
+  cursor: default;
+}
+.sym {
+  font-weight: 600;
+}
+.strong {
+  font-weight: 600;
+}
+.muted {
+  color: var(--muted);
+}
+.small {
+  font-size: 12px;
+}
+.up {
+  color: var(--up);
+}
+.down {
+  color: var(--down);
+}
+
+/* --- order ticket --- */
+.ticket {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.ticket label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 12px;
+  color: var(--muted);
+}
+.ticket input,
+.ticket select,
+.newacc input,
+.accountbar select {
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  color: var(--text);
+  border-radius: 6px;
+  padding: 7px 9px;
+  font: inherit;
+}
+.seg {
+  display: flex;
+  gap: 8px;
+}
+.seg button {
+  flex: 1;
+  padding: 9px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: var(--panel-2);
+  color: var(--muted);
+  cursor: pointer;
+  font: inherit;
+}
+.seg .buy.on {
+  background: rgba(240, 97, 109, 0.15);
+  border-color: var(--up);
+  color: var(--up);
+}
+.seg .sell.on {
+  background: rgba(76, 141, 255, 0.15);
+  border-color: var(--down);
+  color: var(--down);
+}
+button.submit {
+  padding: 10px;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font: inherit;
+  font-weight: 600;
+  color: #fff;
+}
+button.submit.buy {
+  background: var(--up);
+}
+button.submit.sell {
+  background: var(--down);
+}
+button.submit:disabled {
+  opacity: 0.5;
+}
+button.link {
+  background: none;
+  border: none;
+  color: var(--down);
+  cursor: pointer;
+  font: inherit;
+  padding: 0;
+}
+.note {
+  padding: 8px 10px;
+  border-radius: 6px;
+  font-size: 13px;
+}
+.note.ok {
+  background: rgba(63, 185, 80, 0.12);
+  color: #3fb950;
+}
+.note.err {
+  background: rgba(248, 81, 73, 0.12);
+  color: #f85149;
+}
+
+/* --- tabs --- */
+.tabs {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 10px;
+}
+.tabs button {
+  background: none;
+  border: none;
+  color: var(--muted);
+  padding: 6px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+  font: inherit;
+}
+.tabs button.on {
+  background: var(--panel-2);
+  color: var(--text);
+}
+
+.empty,
+.boot-error {
+  text-align: center;
+  padding: 64px 16px;
+  color: var(--muted);
+}
+.boot-error h1 {
+  color: var(--text);
+  font-size: 18px;
+}

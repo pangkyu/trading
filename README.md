@@ -35,7 +35,7 @@ NH투자증권 **PLUG Open API**([PLUG-OpenAPI](https://github.com/PLUG-OpenAPI)
 - [x] **M1 — core** : 모델 + `Broker`/`QuoteFeed` 추상 + `SimBroker` + `SyntheticFeed` + 전략 인터페이스 + 데모/테스트 *(NH 계정 불필요)*
 - [x] **M2 — NH 연동** : `.venv`(Python 3.12, uv), `core.nh`(매핑·계좌), `NHFeed`(WebSocket→QuoteFeed), `NHBroker`/`NHMockBroker`/`LiveBroker`, 매매기록 조회(`fills`/`reconcile`)
 - [x] **M3 — gateway** : FastAPI REST + WS 시세 팬아웃, SQLite 영속(SimBroker 상태 blob + NH 히스토리 캐시), 재시작 복원, NH 라우트(dry-run 기본)
-- [ ] **M4 — web** : Node + React 모의투자 화면 (gateway 호출만)
+- [x] **M4 — web** : Vite + React SPA + Express BFF(dist 서빙 + `/api` REST·WS 프록시). 관심종목·주문·보유·매매기록 화면
 - [ ] **M5 — bot** : 전략 루프 + 리스크 게이트 + kill switch + 프로세스 매니저(무인)
 
 ## 개발 환경
@@ -80,6 +80,16 @@ GATEWAY_FEED=nh GATEWAY_NH_ACCOUNT=50001001987 .venv/bin/python -m scripts.run_g
 SimBroker 상태는 매 주문마다 SQLite(`GATEWAY_DB`)에 저장돼 재시작 시 복원된다.
 NH 매매기록은 날짜별로 캐시(`GATEWAY_NH_HISTORY_TTL`)해 쿼터(IGW42903)를 아낀다.
 
+### web (M4)
+
+```bash
+cd web && npm install
+npm run dev          # http://localhost:5173, /api → gateway 프록시
+# 배포: npm run build && npm start   (Express, REST+WS 프록시 포함)
+```
+
+게이트웨이를 먼저 띄워야 한다. 자세한 내용은 [web/README.md](web/README.md).
+
 ## 디렉토리
 
 ```
@@ -98,6 +108,9 @@ gateway/      FastAPI 서비스 (M3)
   hub.py        피드 1개 소유 → SimBroker·WS 팬아웃, 계좌 레지스트리
   app.py        REST + WebSocket 라우트
   serialize.py  model → JSON
+web/          Vite + React SPA + Express BFF (M4)
+  src/api.js·hooks.js·App.jsx·components/
+  server.js     배포용 프록시 서버
 scripts/      demo · nh_smoke · run_gateway
 tests/        pytest
 CLAUDE.md     NH SDK 개발 규칙 (PLUG-OpenAPI 공식 템플릿)

@@ -15,6 +15,8 @@ def client(tmp_path, monkeypatch):
     monkeypatch.setenv("GATEWAY_FEED", "manual")
     monkeypatch.setenv("GATEWAY_DB", str(tmp_path / "gw.sqlite"))
     monkeypatch.setenv("GATEWAY_SYMBOLS", "005930,000660")
+    monkeypatch.setenv("GATEWAY_BOT_STATUS_FILE", str(tmp_path / "bot-status.json"))
+    monkeypatch.setenv("GATEWAY_BOT_KILL_FILE", str(tmp_path / "KILL"))
     monkeypatch.delenv("GATEWAY_NH_ACCOUNT", raising=False)
     import gateway.app as appmod
 
@@ -120,3 +122,26 @@ def test_ws_quotes_streams(client):
 def test_nh_routes_disabled_without_account(client):
     assert client.get("/nh/status").json() == {"enabled": False}
     assert client.get("/nh/positions").status_code == 404
+
+
+def test_bot_status_absent_then_present(client, tmp_path):
+    r = client.get("/bot/status").json()
+    assert r["present"] is False and r["kill_armed"] is False
+
+    (tmp_path / "bot-status.json").write_text(
+        '{"broker":"sim","session_pnl":1234,"submitted":3,"blocked":0,"fills":2,'
+        '"uptime_s":42,"positions":{}}',
+    )
+    r = client.get("/bot/status").json()
+    assert r["present"] is True and r["stale"] is False
+    assert r["session_pnl"] == 1234 and r["broker"] == "sim"
+
+
+def test_bot_kill_arm_and_disarm(client):
+    assert client.get("/bot/kill").json()["armed"] is False
+    client.post("/bot/kill", json={"reason": "test stop"})
+    got = client.get("/bot/kill").json()
+    assert got["armed"] is True and "test stop" in got["detail"]
+    assert client.get("/bot/status").json()["kill_armed"] is True
+    assert client.delete("/bot/kill").status_code == 204
+    assert client.get("/bot/kill").json()["armed"] is False

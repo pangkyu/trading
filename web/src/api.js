@@ -31,6 +31,23 @@ export const api = {
     j("GET", `/sim/accounts/${id}/fills?since_ms=${sinceMs}`),
 
   quotes: () => j("GET", "/quotes"),
+
+  // bot monitoring
+  botStatus: () => j("GET", "/bot/status"),
+  killStatus: () => j("GET", "/bot/kill"),
+  armKill: (reason) => j("POST", "/bot/kill", { reason }),
+  disarmKill: () => j("DELETE", "/bot/kill"),
+
+  // NH (the bot's real/mock account)
+  nhStatus: () => j("GET", "/nh/status"),
+  nhPositions: () => j("GET", "/nh/positions"),
+  nhFills: (start, end) => {
+    const p = new URLSearchParams();
+    if (start) p.set("start", start);
+    if (end) p.set("end", end);
+    const qs = p.toString();
+    return j("GET", `/nh/fills${qs ? `?${qs}` : ""}`);
+  },
 };
 
 // Live quote stream. Returns a close() fn. Auto-reconnects with backoff.

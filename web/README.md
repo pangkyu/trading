@@ -33,7 +33,10 @@ src/
     OrderTicket  매수/매도 · 시장가/지정가 주문
     Holdings     보유 종목 + 평가손익
     Activity     매매 기록 / 미체결(취소)
+    BotPanel     봇 관제 — 상태·세션손익·kill switch·NH 포지션/매매기록
 ```
+
+상단 탭으로 **모의투자**(SimBroker 가상계좌)와 **봇 관제**(무인 봇 모니터링)를 오간다.
 
 계좌 상태는 게이트웨이가 SQLite에 영속화하므로 새로고침/재시작에도 유지된다.
 마지막으로 본 계좌 id만 `localStorage`에 저장한다.

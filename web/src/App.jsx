@@ -6,16 +6,62 @@ import Watchlist from "./components/Watchlist.jsx";
 import OrderTicket from "./components/OrderTicket.jsx";
 import Holdings from "./components/Holdings.jsx";
 import Activity from "./components/Activity.jsx";
+import BotPanel from "./components/BotPanel.jsx";
 
 const LAST_ACCT = "trading.web.lastAccount";
+const LAST_VIEW = "trading.web.view";
 
 export default function App() {
+  const [view, setView] = useState(
+    () => localStorage.getItem(LAST_VIEW) || "paper",
+  );
+  const [bootError, setBootError] = useState(null);
+
+  useEffect(() => {
+    api.health().catch((e) => setBootError(e.message));
+  }, []);
+  useEffect(() => localStorage.setItem(LAST_VIEW, view), [view]);
+
+  if (bootError)
+    return (
+      <div className="boot-error">
+        <h1>gateway에 연결할 수 없습니다</h1>
+        <p>{bootError}</p>
+        <p className="muted">
+          <code>python -m scripts.run_gateway</code> 실행 후 새로고침하세요.
+        </p>
+      </div>
+    );
+
+  return (
+    <div className="app">
+      <nav className="topnav">
+        <span className="brand">trading</span>
+        <button
+          className={view === "paper" ? "on" : ""}
+          onClick={() => setView("paper")}
+        >
+          모의투자
+        </button>
+        <button
+          className={view === "bot" ? "on" : ""}
+          onClick={() => setView("bot")}
+        >
+          봇 관제
+        </button>
+      </nav>
+
+      {view === "paper" ? <PaperTrading /> : <BotPanel />}
+    </div>
+  );
+}
+
+function PaperTrading() {
   const [accounts, setAccounts] = useState([]);
   const [accountId, setAccountId] = useState(
     () => localStorage.getItem(LAST_ACCT) || "",
   );
   const [selected, setSelected] = useState(null);
-  const [bootError, setBootError] = useState(null);
 
   const symbols = useMemo(() => ["005930", "000660", "035720"], []);
   const quotes = useQuotes(symbols);
@@ -23,16 +69,14 @@ export default function App() {
   const refreshAccounts = useCallback(async () => {
     const list = await api.listAccounts();
     setAccounts(list);
-    setAccountId((cur) => {
-      if (cur && list.some((a) => a.id === cur)) return cur;
-      return list[0]?.id || "";
-    });
+    setAccountId((cur) =>
+      cur && list.some((a) => a.id === cur) ? cur : list[0]?.id || "",
+    );
   }, []);
 
   useEffect(() => {
-    refreshAccounts().catch((e) => setBootError(e.message));
+    refreshAccounts().catch(() => {});
   }, [refreshAccounts]);
-
   useEffect(() => {
     if (accountId) localStorage.setItem(LAST_ACCT, accountId);
   }, [accountId]);
@@ -59,19 +103,8 @@ export default function App() {
     fills.refresh();
   }, [account, orders, fills]);
 
-  if (bootError)
-    return (
-      <div className="boot-error">
-        <h1>gateway에 연결할 수 없습니다</h1>
-        <p>{bootError}</p>
-        <p className="muted">
-          <code>python -m scripts.run_gateway</code> 실행 후 새로고침하세요.
-        </p>
-      </div>
-    );
-
   return (
-    <div className="app">
+    <>
       <AccountBar
         accounts={accounts}
         current={account.data}
@@ -84,16 +117,14 @@ export default function App() {
 
       {accounts.length === 0 ? (
         <div className="empty">
-          <p>계좌가 없습니다. 상단의 <b>+ 새 계좌</b>로 시작하세요.</p>
+          <p>
+            계좌가 없습니다. 상단의 <b>+ 새 계좌</b>로 시작하세요.
+          </p>
         </div>
       ) : (
         <main className="layout">
           <div className="col">
-            <Watchlist
-              quotes={quotes}
-              selected={selected}
-              onSelect={setSelected}
-            />
+            <Watchlist quotes={quotes} selected={selected} onSelect={setSelected} />
             <OrderTicket
               accountId={accountId}
               symbol={selected}
@@ -112,6 +143,6 @@ export default function App() {
           </div>
         </main>
       )}
-    </div>
+    </>
   );
 }

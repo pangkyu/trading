@@ -256,6 +256,106 @@ button.link {
   color: var(--text);
 }
 
+/* --- top nav --- */
+.topnav {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 16px;
+}
+.topnav .brand {
+  font-weight: 700;
+  font-size: 16px;
+  margin-right: 10px;
+}
+.topnav button {
+  background: none;
+  border: none;
+  color: var(--muted);
+  padding: 6px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  font: inherit;
+}
+.topnav button.on {
+  background: var(--panel-2);
+  color: var(--text);
+}
+
+/* --- bot panel --- */
+.botgrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  align-items: start;
+}
+.botgrid .wide {
+  grid-column: 1 / -1;
+}
+@media (max-width: 800px) {
+  .botgrid {
+    grid-template-columns: 1fr;
+  }
+}
+.statusline {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+  font-weight: 600;
+}
+.dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  display: inline-block;
+}
+.dot.on {
+  background: #3fb950;
+}
+.dot.warn {
+  background: var(--accent);
+}
+.dot.off {
+  background: var(--muted);
+}
+table.kv {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 14px;
+}
+.kv td {
+  padding: 5px 0;
+  border-bottom: 1px solid var(--panel-2);
+}
+.kv td:first-child {
+  color: var(--muted);
+  width: 45%;
+}
+.tag {
+  font-size: 11px;
+  padding: 1px 6px;
+  border-radius: 4px;
+  margin-left: 6px;
+  background: var(--panel-2);
+  color: var(--muted);
+}
+.tag.live {
+  background: rgba(240, 97, 109, 0.15);
+  color: var(--up);
+}
+.botgrid input[type="date"] {
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  color: var(--text);
+  border-radius: 6px;
+  padding: 3px 6px;
+  font: inherit;
+  margin-left: 8px;
+}
+
 .empty,
 .boot-error {
   text-align: center;

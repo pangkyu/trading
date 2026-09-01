@@ -37,6 +37,7 @@ NH투자증권 **PLUG Open API**([PLUG-OpenAPI](https://github.com/PLUG-OpenAPI)
 - [x] **M3 — gateway** : FastAPI REST + WS 시세 팬아웃, SQLite 영속(SimBroker 상태 blob + NH 히스토리 캐시), 재시작 복원, NH 라우트(dry-run 기본)
 - [x] **M4 — web** : Vite + React SPA + Express BFF(dist 서빙 + `/api` REST·WS 프록시). 관심종목·주문·보유·매매기록 화면
 - [x] **M5 — bot** : 무인 전략 루프 + 리스크 게이트(주문/포지션/총액/일일손실) + kill switch(파일) + 상태파일 + systemd/pm2
+- [x] **M6 — 봇 관제** : gateway `/bot/status`·`/bot/kill`(웹에서 kill 토글), 웹 "봇 관제" 탭(실행상태·세션손익·차단수·NH 포지션·매매기록)
 
 ## 개발 환경
 
@@ -76,17 +77,25 @@ GATEWAY_FEED=nh GATEWAY_NH_ACCOUNT=50001001987 .venv/bin/python -m scripts.run_g
 | 주문 | `POST /sim/accounts/{id}/orders`, `…/orders?open_only=`, `…/orders/{oid}/cancel` |
 | 매매기록 | `GET /sim/accounts/{id}/fills?since_ms=` |
 | NH(봇) | `GET /nh/status`, `/nh/positions`, `/nh/fills?start=&end=`(캐시), `POST /nh/orders` |
+| 봇 관제 | `GET /bot/status`(봇 상태파일 + present/stale), `GET·POST·DELETE /bot/kill` |
 
 SimBroker 상태는 매 주문마다 SQLite(`GATEWAY_DB`)에 저장돼 재시작 시 복원된다.
 NH 매매기록은 날짜별로 캐시(`GATEWAY_NH_HISTORY_TTL`)해 쿼터(IGW42903)를 아낀다.
 
-### web (M4)
+### web (M4 · M6)
 
 ```bash
 cd web && npm install
 npm run dev          # http://localhost:5173, /api → gateway 프록시
 # 배포: npm run build && npm start   (Express, REST+WS 프록시 포함)
 ```
+
+상단 **모의투자 / 봇 관제** 탭:
+- 모의투자: 가상계좌 매매 (SimBroker)
+- 봇 관제: 봇 실행상태·세션손익·차단 주문 수, **긴급 정지(kill switch) 버튼**,
+  봇 포지션, NH 매매기록. 봇이 `data/bot-status.json`을 쓰고 있고 게이트웨이와
+  같은 `KILL`·상태파일 경로를 봐야 데이터가 뜬다(기본값 동일). NH 조회는
+  게이트웨이에 `GATEWAY_NH_ACCOUNT` 필요.
 
 게이트웨이를 먼저 띄워야 한다. 자세한 내용은 [web/README.md](web/README.md).
 

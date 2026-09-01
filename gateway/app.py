@@ -8,9 +8,12 @@ Env:  GATEWAY_FEED=synthetic|nh  GATEWAY_SYMBOLS=005930,000660  GATEWAY_DB=data/
 from __future__ import annotations
 
 import asyncio
+import json
 import logging
+import time
 from contextlib import asynccontextmanager
 from datetime import date
+from pathlib import Path
 
 from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
 from pydantic import BaseModel, Field
@@ -47,6 +50,10 @@ app = FastAPI(title="trading gateway", lifespan=lifespan)
 class NewSimAccount(BaseModel):
     name: str
     cash: float | None = None
+
+
+class KillReason(BaseModel):
+    reason: str = "via web"
 
 
 class NewOrder(BaseModel):
@@ -244,3 +251,51 @@ def nh_submit(body: NewOrder) -> dict:
     nh = _nh_or_404()
     o = nh.submit(body.to_order())
     return serialize.order(o)
+
+
+# --- bot monitoring (reads the files the bot writes) -----------------
+@app.get("/bot/status")
+def bot_status() -> dict:
+    """The bot's self-reported status. `present=false` if the bot never ran;
+    `stale=true` if the file hasn't been updated within GATEWAY_BOT_STALE_S.
+    """
+    cfg = app.state.hub.cfg
+    p = Path(cfg.bot_status_file)
+    if not p.exists():
+        return {"present": False, "stale": True, "kill_armed": _kill_armed()}
+    age_s = time.time() - p.stat().st_mtime
+    try:
+        data = json.loads(p.read_text())
+    except (OSError, json.JSONDecodeError) as e:
+        raise HTTPException(500, f"unreadable status file: {e}") from None
+    data["present"] = True
+    data["age_s"] = round(age_s)
+    data["stale"] = age_s > cfg.bot_stale_s
+    data["kill_armed"] = _kill_armed()
+    return data
+
+
+def _kill_armed() -> bool:
+    return Path(app.state.hub.cfg.bot_kill_file).exists()
+
+
+@app.get("/bot/kill")
+def bot_kill_get() -> dict:
+    p = Path(app.state.hub.cfg.bot_kill_file)
+    return {"armed": p.exists(), "detail": p.read_text() if p.exists() else None}
+
+
+@app.post("/bot/kill")
+def bot_kill_arm(body: KillReason | None = None) -> dict:
+    p = Path(app.state.hub.cfg.bot_kill_file)
+    p.parent.mkdir(parents=True, exist_ok=True)
+    reason = (body.reason if body else "via web")
+    p.write_text(f"{date.today().isoformat()} {reason}\n")
+    log.warning("bot kill switch ARMED (%s)", reason)
+    return {"armed": True}
+
+
+@app.delete("/bot/kill", status_code=204)
+def bot_kill_disarm() -> None:
+    Path(app.state.hub.cfg.bot_kill_file).unlink(missing_ok=True)
+    log.warning("bot kill switch disarmed")

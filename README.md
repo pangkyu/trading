@@ -36,7 +36,7 @@ NH투자증권 **PLUG Open API**([PLUG-OpenAPI](https://github.com/PLUG-OpenAPI)
 - [x] **M2 — NH 연동** : `.venv`(Python 3.12, uv), `core.nh`(매핑·계좌), `NHFeed`(WebSocket→QuoteFeed), `NHBroker`/`NHMockBroker`/`LiveBroker`, 매매기록 조회(`fills`/`reconcile`)
 - [x] **M3 — gateway** : FastAPI REST + WS 시세 팬아웃, SQLite 영속(SimBroker 상태 blob + NH 히스토리 캐시), 재시작 복원, NH 라우트(dry-run 기본)
 - [x] **M4 — web** : Vite + React SPA + Express BFF(dist 서빙 + `/api` REST·WS 프록시). 관심종목·주문·보유·매매기록 화면
-- [ ] **M5 — bot** : 전략 루프 + 리스크 게이트 + kill switch + 프로세스 매니저(무인)
+- [x] **M5 — bot** : 무인 전략 루프 + 리스크 게이트(주문/포지션/총액/일일손실) + kill switch(파일) + 상태파일 + systemd/pm2
 
 ## 개발 환경
 
@@ -90,6 +90,23 @@ npm run dev          # http://localhost:5173, /api → gateway 프록시
 
 게이트웨이를 먼저 띄워야 한다. 자세한 내용은 [web/README.md](web/README.md).
 
+### bot (M5)
+
+무인 자동매매. 게이트웨이를 거치지 않고 `core`로 자체 피드·브로커를 만든다.
+
+```bash
+.venv/bin/python -m scripts.run_bot                       # BOT_BROKER=sim, 합성 시세
+BOT_BROKER=nhmock BOT_FEED=nh BOT_NH_ACCOUNT=50001001987 \
+  .venv/bin/python -m scripts.run_bot                     # NH 모의투자, dry-run 기본
+
+touch data/KILL                                           # 즉시·영구 정지 (재시작해도 안 뜸)
+cat data/bot-status.json                                  # 현재 상태 (submitted/blocked/fills/pnl/positions)
+```
+
+승급: `BOT_BROKER` = `sim` → `nhmock` → `live`. 리스크 한도는 `BOT_MAX_ORDER_QTY`,
+`BOT_MAX_POSITION_QTY`, `BOT_MAX_GROSS_NOTIONAL`, `BOT_MAX_DAILY_LOSS`(초과 시 kill 자동 arming).
+배포: [deploy/trading-bot.service](deploy/trading-bot.service)(systemd) · [deploy/ecosystem.config.cjs](deploy/ecosystem.config.cjs)(pm2).
+
 ## 디렉토리
 
 ```
@@ -111,8 +128,14 @@ gateway/      FastAPI 서비스 (M3)
 web/          Vite + React SPA + Express BFF (M4)
   src/api.js·hooks.js·App.jsx·components/
   server.js     배포용 프록시 서버
-scripts/      demo · nh_smoke · run_gateway
-tests/        pytest
+bot/          무인 자동매매 (M5)
+  config.py     BOT_* 환경변수
+  build.py      Config → broker/feed/strategy 팩토리
+  risk.py       RiskGate: 주문 전 한도 검사 + kill switch
+  engine.py     Bot 루프 (자체 포지션 북 + NH 리컨실 + 상태파일)
+deploy/       systemd unit · pm2 ecosystem
+scripts/      demo · nh_smoke · run_gateway · run_bot
+tests/        pytest (25)
 CLAUDE.md     NH SDK 개발 규칙 (PLUG-OpenAPI 공식 템플릿)
 ```
 

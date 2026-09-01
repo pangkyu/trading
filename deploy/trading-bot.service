@@ -1,0 +1,26 @@
+# systemd unit for the trading bot (Linux).
+#   sudo cp deploy/trading-bot.service /etc/systemd/system/
+#   sudo systemctl daemon-reload && sudo systemctl enable --now trading-bot
+#   journalctl -u trading-bot -f
+#
+# Emergency stop that survives restarts:  touch /opt/trading/data/KILL
+
+[Unit]
+Description=NH PLUG trading bot
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=trading
+WorkingDirectory=/opt/trading
+EnvironmentFile=/opt/trading/bot.env
+ExecStart=/opt/trading/.venv/bin/python -m scripts.run_bot
+Restart=on-failure
+RestartSec=5
+# give the loop time to write final status on stop
+TimeoutStopSec=20
+KillSignal=SIGTERM
+
+[Install]
+WantedBy=multi-user.target
